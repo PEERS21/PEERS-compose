@@ -1,0 +1,57 @@
+version: '3.8'
+
+services:
+  nginx:
+    image: peers_nginx:latest
+    container_name: peers_nginx
+    pull_policy: never
+    ports:
+      - "80:80"
+      - "443:443"
+    networks:
+      - peers_network
+    restart: unless-stopped
+    depends_on:
+      - auth
+      - peers_bot
+  
+  auth:
+    image: peers_auth:latest
+    container_name: peers_auth
+    networks:
+      - app_network
+    restart: always
+
+  peers_bot:
+    image: peers_bot:latest
+    container_name: peers_bot
+    networks:
+      - app_network
+    restart: always
+
+  rentaldisk_api:
+    image: rentaldisk_api:latest
+    container_name: rentaldisk_api
+    networks:
+      - app_network
+    restart: always
+
+  rentaldisk_grpc:
+    image: rentaldisk_grpc:latest
+    container_name: rentaldisk_grpc
+    networks:
+      - app_network
+    restart: always
+
+  nextjs-app:
+    build:
+      context: ./frontend-repo
+      dockerfile: Dockerfile
+    container_name: nextjs-frontend
+    networks:
+      - app_network
+    restart: always
+
+networks:
+  peers_network:
+    driver: bridge
