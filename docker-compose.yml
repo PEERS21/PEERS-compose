@@ -1,56 +1,92 @@
-version: '3.8'
-
 services:
-  nginx:
-    image: peers_nginx:latest
-    container_name: peers_nginx
-    pull_policy: never
-    ports:
-      - "80:80"
-      - "443:443"
-    networks:
-      - peers_network
-    restart: unless-stopped
-    depends_on:
-      - auth
-      - peers_bot
-  
-  auth:
+  peers_auth:
     image: peers_auth:latest
     container_name: peers_auth
+    secrets:
+      - peers_auth
+      - common_python
     networks:
-      - app_network
+      - peers_network
     restart: always
 
   peers_bot:
     image: peers_bot:latest
     container_name: peers_bot
+    secrets:
+      - peers_bot
     networks:
-      - app_network
+      - peers_network
     restart: always
 
   rentaldisk_api:
     image: rentaldisk_api:latest
     container_name: rentaldisk_api
+    secrets:
+      - rentaldisk_api
     networks:
-      - app_network
+      - peers_network
     restart: always
 
   rentaldisk_grpc:
     image: rentaldisk_grpc:latest
     container_name: rentaldisk_grpc
+    secrets:
+      - rentaldisk_grpc
     networks:
-      - app_network
+      - peers_network
     restart: always
 
-  nextjs-app:
-    build:
-      context: ./frontend-repo
-      dockerfile: Dockerfile
-    container_name: nextjs-frontend
+  rentaldisk:
+    image: rentaldisk:latest
+    container_name: rentaldisk
+    secrets:
+      - rentaldisk
     networks:
-      - app_network
+      - peers_network
     restart: always
+
+  mariadb:
+    image: mariadb:noble
+    container_name: mariadb_db
+    restart: always
+    environment:
+      - MYSQL_ROOT_PASSWORD_FILE=/run/secrets/mariadb_root_password
+    secrets:
+      - auth_db_pass
+      - mariadb_root_password
+      - rentaldisk_db_pass
+    volumes:
+      - ./mariadb_data:/var/lib/mysql
+      - ./mariadb/init.sh:/docker-entrypoint-initdb.d/init.sh:ro
+    networks:
+      - peers_network
+
+  redis:
+    image: redis:alpine
+    container_name: redis_cache
+    restart: always
+    networks:
+      - peers_network
+
+secrets:
+  peers_auth:
+    file: ./secrets/peers_auth/.env
+  common_python:
+    file: ./secrets/common/.env
+  auth_db_pass:
+    file: ./secrets/mariadb/auth_db_pass
+  mariadb_root_password:
+    file: ./secrets/mariadb/mariadb_root_password
+  rentaldisk_db_pass:
+    file: ./secrets/mariadb/rentaldisk_db_pass
+  rentaldisk:
+    file: ./secrets/rentaldisk/.env
+  rentaldisk_grpc:
+    file: ./secrets/rentaldisk_grpc/.env
+  rentaldisk_api:
+    file: ./secrets/rentaldisk_api/.env
+  peers_bot:
+    file: ./secrets/peers_bot/.env
 
 networks:
   peers_network:
